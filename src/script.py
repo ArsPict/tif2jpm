@@ -1,6 +1,14 @@
 import os
 import subprocess
+import logging
 from pathlib import Path
+
+# Set up logging for failed conversions
+logging.basicConfig(
+    filename='conversion_failures.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 def convert_tif_to_jpm(src_dir, out_dir):
@@ -9,6 +17,8 @@ def convert_tif_to_jpm(src_dir, out_dir):
 
     # Walk through the source directory recursively
     for root, dirs, files in os.walk(src_dir):
+        print(f"Converting {root}")
+
         # Determine the relative path from the source directory
         relative_path = os.path.relpath(root, src_dir)
 
@@ -24,17 +34,40 @@ def convert_tif_to_jpm(src_dir, out_dir):
                 input_file = os.path.join(root, file)
                 output_file = os.path.join(output_path, os.path.splitext(file)[0] + ".jpm")
 
+                # Skip if output file already exists
+                if os.path.exists(output_file):
+                    continue
+
                 # Perform the conversion using ImageMagick's "magick" command
                 try:
                     subprocess.run(["magick", input_file, output_file], check=True)
                     print(f"Converted: {input_file} -> {output_file}")
                 except subprocess.CalledProcessError as e:
+                    # Log failed conversions
+                    logging.error(f"Failed to convert {input_file}: {e}")
                     print(f"Failed to convert {input_file}: {e}")
+                except Exception as e:
+                    # Catch other exceptions and log them
+                    logging.error(f"Unexpected error with {input_file}: {e}")
+                    print(f"Unexpected error with {input_file}: {e}")
+        print(f"Finished converting {root}")
 
 
 if __name__ == "__main__":
-    src_directory = r"C:\Users\Arsenii\Desktop\Biesdorf_1892_1893_S_tif"  # Replace with your source directory
-    output_directory = r"C:\Users\Arsenii\Desktop\Biesdorf_1892_1893_S_jpm" # Replace with your output directory
-    src_directory = input()
-    output_directory = input()
+    src_directory = input("Enter source directory: ")
+    output_directory = input("Enter output directory: ")
+
     convert_tif_to_jpm(src_directory, output_directory)
+
+    # Print source and output directory structure for confirmation
+    step = ""
+    print("\nSource Directory Structure:")
+    for root, dirs, files in os.walk(src_directory, topdown=True):
+        print(step, root, dirs, files)
+        step += "  "
+
+    step = ""
+    print("\nOutput Directory Structure:")
+    for root, dirs, files in os.walk(output_directory, topdown=True):
+        print(step, root, dirs, files)
+        step += "  "
